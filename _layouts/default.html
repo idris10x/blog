@@ -29,6 +29,12 @@
             title="{{ site.title | escape }}"
             href="{{ '/feed.xml' | relative_url }}"
         />
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+            });
+        </script>
     </head>
     <body>
         <header class="site-header">
@@ -37,9 +43,7 @@
                     >{{ site.title | escape }}</a
                 >
                 <nav class="site-nav">
-                    <a class="page-link" href="{{ '/blog/' | relative_url }}"
-                        >Blog</a
-                    >
+                    <a class="page-link" href="{{ '/about/' | relative_url }}">About</a>
                 </nav>
             </div>
         </header>
