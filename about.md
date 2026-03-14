@@ -5,31 +5,24 @@ title: About
 
 # About me
 
-```mermaid
-gantt
-    title Career Timeline
-    dateFormat  YYYY
-    axisFormat  %Y
-    tickInterval 1year
-
-    section Education
-    Geography @ UNILAG           :2014, 2019
-
-    section Freelance
-    Jack of all Trades           :2015, 2021
-
-    section Career
-    Data Analyst                 :2022, 2023
-    Fintech Pioneer              :2024, 2025
-
-    section Skills
-    Linux & Python              :2022, 2023
-    LLMs & Automation           :2024, 2025
-
-    section Projects
-    Data Pipelines (Sheets/AppScript/Cloud Functions) :2022, 2023
-    Clinical Triage (CliniCheck)  :2025, 2025
-    ShareOS                      :2026, 2026
+```
+2014 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 2019
+     │                                                │
+     │  Geography @ UNILAG ──────────────────────────  │
+     │
+2015 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 2021
+     │                                                │
+     │  Graphics Design, Data Entry, Data Annotation  │
+     │
+2022 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 2023
+     │                                                │
+     │  Data Analyst: Linux, Python, R, Google Sheets │
+     │  Apps Script, Cloud Functions, Data Pipelines   │
+     │
+2024 ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ Present
+     │
+     │  Fintech: Digitizing back office processes      │
+     │  LLMs, CliniCheck, ShareOS                     │
 ```
 
 - **2014-2019**: Studying Geography at UNILAG

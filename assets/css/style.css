@@ -37,6 +37,9 @@ body {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .site-title {
@@ -189,22 +192,6 @@ h3 {
   color: var(--color-text-light);
   margin-top: 2rem;
   margin-bottom: 1rem;
-}
-
-/* Mermaid diagrams */
-.mermaid {
-  background: transparent;
-  margin: 1.5rem 0;
-  overflow-x: auto;
-}
-
-.mermaid .section {
-  fill: var(--color-code-bg);
-  stroke: var(--color-border);
-}
-
-.mermaid .section0, .mermaid .section1, .mermaid .section2 {
-  fill: var(--color-code-bg) !important;
 }
 
 /* Responsive */
