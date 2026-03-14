@@ -5,8 +5,6 @@ date: 2026-03-14
 ---
 
 
-# Fixing Proton VPN Installation on Pop!_OS 24.04 LTS
-
 ## The Problem
 
 I recently tried to install Proton VPN on my Pop!_OS 24.04 LTS system, but kept running into network errors. When attempting to download the Proton VPN repository package, I'd get:
