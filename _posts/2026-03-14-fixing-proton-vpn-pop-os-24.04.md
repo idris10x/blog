@@ -1,3 +1,10 @@
+---
+layout: post
+title: "Fixing Proton VPN Installation on Pop!_OS 24.04 LTS"
+date: 2026-03-14
+---
+
+
 # Fixing Proton VPN Installation on Pop!_OS 24.04 LTS
 
 ## The Problem
@@ -68,11 +75,3 @@ sudo cp /tmp/protonvpn-extract/etc/apt/sources.list.d/protonvpn-stable.sources /
 sudo apt update
 sudo apt install proton-vpn-gnome-desktop
 ```
-
-## Conclusion
-
-After these steps, Proton VPN installed successfully. If you're on Pop!_OS 24.04 or any Ubuntu-based distro using the new deb822 format and encounter similar issues, remember:
-
-- Check your DNS settings if network calls fail unexpectedly
-- Verify that repository sources files are in `/etc/apt/sources.list.d/`
-- Manually copy files when the installer falls short
