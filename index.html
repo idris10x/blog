@@ -1,0 +1,26 @@
+---
+layout: default
+title: Home
+---
+
+<h2>Welcome</h2>
+
+<p>Welcome to my blog. Here I write about technology, coding, and things I learn along the way.</p>
+
+<h3>Latest Posts</h3>
+
+<ul class="blog-list">
+  {% for post in site.posts limit:5 %}
+    <li class="blog-list-item">
+      <h2><a href="{{ post.url | relative_url }}">{{ post.title | escape }}</a></h2>
+      <p class="post-meta">
+        <time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: '%B %d, %Y' }}</time>
+      </p>
+      {% if post.description %}
+        <p>{{ post.description }}</p>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+
+<p><a href="{{ '/blog/' | relative_url }}">View all posts &rarr;</a></p>

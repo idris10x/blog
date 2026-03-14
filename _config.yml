@@ -1,0 +1,27 @@
+title: idris10x Blog
+description: A blog about software and computers
+author: idris10x
+baseurl: "/blog"
+url: "https://idris10x.github.io"
+
+permalink: /:title/
+
+markdown: kramdown
+
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+collections:
+  posts:
+    output: true
+    permalink: /:title/
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+sass:
+  style: compressed
