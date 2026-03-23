@@ -25,3 +25,14 @@ exclude:
 
 sass:
   style: compressed
+
+giscus:
+  repo: "idris10x/idris10x.github.io"
+  repo_id: "R_kgDORm9F3w"
+  category: "Announcements"
+  category_id: "DIC_kwDORm9F384C5HGr"
+  mapping: "pathname"
+  reactions_enabled: "1"
+  emit_metadata: "0"
+  theme: "dark"
+  lang: "en"

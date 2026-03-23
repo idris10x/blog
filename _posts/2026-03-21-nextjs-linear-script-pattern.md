@@ -1,68 +1,23 @@
 ---
 layout: post
-title: "Making Next.js Feel Like Python: The Linear Script Pattern"
+title: "Making Next.js Feel Like Python"
 date: 2026-03-21
 ---
 
 
-If you're a Python developer building frontends with Next.js—while keeping your backend in Python, Go, or Express—the "hooks everywhere" paradigm can feel disorienting. The constant ping-pong between `useEffect`, `useState`, and API routes makes it hard to trace where data comes from.
+I'm used to starting every Python project from `main.py`. That single file is my anchor. I read the imports, follow the function calls, and the data flow reveals itself. I use FastAPI for API development, and I structure my code so that tracing the data from the entry point is always straightforward.
 
-By leaning into **Server Components**, you can write Next.js pages that read like a linear Python script—top to bottom, with traceable data and no hidden magic. Your Next.js server acts as a **Backend for Frontend (BFF)**: it calls your real backend's API, and the browser only ever sees the final HTML.
+I wanted to try a new frontend framework. Next.js is popular, so I picked it up and opened a colleague's project to learn by example. He had `route.ts` files for API routes, `global.css`, some `module.css` files (he likes writing CSS by hand), and a structure that made no sense to me. I checked `layout.tsx`, Ctrl+clicked into components, and still couldn't orient myself. There was no `main.py` equivalent staring back at me.
 
-> **Note**: This guide uses Next.js 16 conventions. The most notable change from earlier versions is that `middleware.ts` has been renamed to `proxy.ts`—the functionality is the same, but the new name clarifies that this layer acts as a network gateway, not app-level middleware.
+I opened Claude Code and started asking questions. The key insight came quickly: **every page you see in the browser has a `page.tsx` file in the code.** That was my `main.py`. Once I had that anchor, I started visiting pages, reading top to bottom, and using the imports at the top to follow dependencies, exactly how I navigate Python.
 
----
-
-## 1. The Core Idea: Server Components as Your "Main" Function
-
-Instead of scattering data fetching across hooks and API routes, put it directly inside your Page function. The page becomes your entry point—like `main.py`.
-
-```tsx
-// app/dashboard/page.tsx
-
-import { fetchFromBackend } from "@/lib/api";
-import { redirect } from "next/navigation";
-
-export default async function DashboardPage() {
-  const user = await fetchFromBackend("/me");
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const posts = await fetchFromBackend(`/users/${user.id}/posts`);
-
-  const formatDate = (date: string) => new Date(date).toLocaleDateString();
-
-  return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold">{user.name}'s Dashboard</h1>
-
-      <section className="mt-6">
-        {posts.map((post: any) => (
-          <div key={post.id} className="border-b py-4">
-            <h2 className="text-xl">{post.title}</h2>
-            <p className="text-gray-500">{formatDate(post.created_at)}</p>
-          </div>
-        ))}
-      </section>
-    </main>
-  );
-}
-```
-
-Why this works for a Python-trained brain:
-
-- **No "invisible" entry**: Everything that happens when the user hits this URL starts at line 1 of this file.
-- **Linear execution**: Read it top to bottom. Data is fetched (`await`), logic is checked (`if !user`), then UI is returned.
-- **Traceable data**: If you wonder where `posts` comes from, look three lines up. Ctrl+Click `fetchFromBackend` to see exactly how data is fetched.
-- **Colocated styles**: With Tailwind CSS (`p-8`, `text-2xl`), you don't need to hunt through `.css` files.
+I decided to rebuild the project from scratch using patterns that felt natural to a Python developer. Here's what emerged.
 
 ---
 
-## 2. The API Layer: Your Backend Connection
+## The Core Pattern: `page.tsx` Is Your Entry Point
 
-Since your backend is always a separate service, create a centralized API client that every Server Component and Server Action uses:
+In Python, `main.py` is where you look first. In Next.js, `page.tsx` serves the same role. I made a rule for myself: **all data fetching is visible in the page file.** Instead of scattering fetch calls across `route.ts` handlers and client components, I created a single `api.ts` utility and imported it directly into each page.
 
 ```tsx
 // lib/api.ts
@@ -105,7 +60,42 @@ export async function mutateBackend(
 }
 ```
 
-Every page reads the same way:
+Now every page reads the same way, like a Python script with imports at the top, data fetching in the middle, and rendering at the bottom:
+
+```tsx
+// app/dashboard/page.tsx
+import { fetchFromBackend } from "@/lib/api";
+import { redirect } from "next/navigation";
+
+export default async function DashboardPage() {
+  const user = await fetchFromBackend("/me");
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const posts = await fetchFromBackend(`/users/${user.id}/posts`);
+
+  const formatDate = (date: string) => new Date(date).toLocaleDateString();
+
+  return (
+    <main className="p-8">
+      <h1 className="text-2xl font-bold">{user.name}'s Dashboard</h1>
+
+      <section className="mt-6">
+        {posts.map((post: any) => (
+          <div key={post.id} className="border-b py-4">
+            <h2 className="text-xl">{post.title}</h2>
+            <p className="text-gray-500">{formatDate(post.created_at)}</p>
+          </div>
+        ))}
+      </section>
+    </main>
+  );
+}
+```
+
+I used Tailwind CSS because the styling lives directly in the JSX, so there's no jumping between files. Each `page.tsx` is self-contained. Another page looks almost identical:
 
 ```tsx
 // app/projects/page.tsx
@@ -127,21 +117,11 @@ export default async function ProjectsPage() {
 }
 ```
 
-Why this pattern matters:
-
-- **Zero browser fetches**: The browser never sees your API URL—only the final HTML.
-- **Security**: API keys and tokens stay on the Next.js server, never exposed to the browser.
-- **Explicit traceability**: Ctrl+Click `fetchFromBackend` to see how data is fetched, what headers are sent, how errors are handled.
-
-> **Future-proofing**: If you ever move to gRPC or another protocol, you only change `lib/api.ts`. Every page that imports from it continues working without modification.
-
 ---
 
-## 3. Authentication: JWT with HTTP-Only Cookies
+## Authentication: Login, Cookies, and Server Actions
 
-Store the JWT from your backend in an **HTTP-only cookie**. This makes the token available to your Next.js server on every request without browser-side global state—and protects against XSS attacks since JavaScript can't read the cookie.
-
-### The Login Flow
+For login, I needed a form that submits data to the backend and stores a JWT. Next.js has "Server Actions", which are functions that run on the server when a form is submitted. I colocated the action with the page in the same folder, which felt natural (like keeping a helper function next to the script that uses it).
 
 ```tsx
 // app/login/actions.ts
@@ -178,7 +158,7 @@ export async function loginAction(formData: FormData) {
 }
 ```
 
-### The Login Page
+The login page itself is minimal:
 
 ```tsx
 // app/login/page.tsx
@@ -189,22 +169,25 @@ export default function LoginPage() {
     <main className="p-10 max-w-md mx-auto">
       <h1 className="text-2xl font-bold mb-6">Sign In</h1>
       <form action={loginAction} className="space-y-4">
-        <input name="email" type="email" placeholder="Email" className="w-full border p-2 rounded" required />
-        <input name="password" type="password" placeholder="Password" className="w-full border p-2 rounded" required />
-        <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded">Sign In</button>
+        <input name="email" type="email" placeholder="Email"
+               className="w-full border p-2 rounded" required />
+        <input name="password" type="password" placeholder="Password"
+               className="w-full border p-2 rounded" required />
+        <button type="submit"
+                className="w-full bg-blue-500 text-white py-2 rounded">
+          Sign In
+        </button>
       </form>
     </main>
   );
 }
 ```
 
-All sensitive communication happens between Next.js and your backend. The browser is just a viewer of the final HTML.
-
 ---
 
-## 4. Auth Layers: Proxy, Server Components, and Client Context
+## The Three Layers of Auth (and Why They're Not Redundant)
 
-Next.js gives you three places to check who a user is. They are **not** interchangeable—each runs in a different environment, at a different time, and solves a different problem.
+In the original project, I noticed a `proxy.ts` file listing public and protected routes, auth checks inside `page.tsx`, and `useContext` for user info in client components. The functionality seemed to overlap. I asked the LLM about it and the answer clarified something important: these three layers run in different environments, at different times, and solve different problems.
 
 | Layer | Where It Runs | When It Runs | What It Can Do | What It Cannot Do |
 |---|---|---|---|---|
@@ -212,11 +195,11 @@ Next.js gives you three places to check who a user is. They are **not** intercha
 | **Server Component** (`page.tsx`) | Node.js server, during render | When the page is requested | Call your backend, verify roles, render UI | Respond to browser events |
 | **Client Context** (`useContext`) | Browser, after hydration | After the page loads | Toggle UI, personalize display | Protect routes, guard data |
 
-> Think of it as: **Proxy** = the front door bouncer (checks your ID fast). **Server Component** = the room-level security guard (verifies your access fully). **Client Context** = the name badge you wear inside (personalization only, protects nothing).
+Think of it as: **Proxy** = the front door bouncer (checks your ID fast). **Server Component** = the room-level security guard (verifies your access fully). **Client Context** = the name badge you wear inside (personalization only, protects nothing).
 
-### Layer 1: Proxy — Fast Redirects (`proxy.ts`)
+### Layer 1: Proxy - Fast Redirects
 
-The proxy runs before your page renders. It handles optimistic checks: "Does this person have a cookie at all?" It should **not** be your only security layer—a 2025 vulnerability showed that middleware-based auth could be bypassed, which is partly why Next.js renamed it to "proxy."
+The proxy runs before your page renders. It handles optimistic checks: "Does this person have a cookie at all?" It should **not** be your only security layer. A 2025 vulnerability showed that middleware-based auth could be bypassed, which is partly why Next.js renamed it to "proxy."
 
 ```tsx
 // proxy.ts (root of project)
@@ -246,7 +229,7 @@ export const config = {
 };
 ```
 
-### Layer 2: Server Component — Real Authorization
+### Layer 2: Server Component - Real Authorization
 
 This is where actual security lives. Your Server Component calls the backend API to verify the token and check roles. Even if someone bypasses the proxy, this layer rejects them.
 
@@ -299,9 +282,9 @@ export default async function AdminPage() {
 }
 ```
 
-### Layer 3: Client Context — UI Personalization Only
+### Layer 3: Client Context - UI Personalization Only
 
-Client context makes user info available to client components for display. It protects nothing—a malicious user can modify client-side state.
+Client context makes user info available to client components for display. It protects nothing; a malicious user can modify client-side state.
 
 ```tsx
 // components/UserProvider.tsx
@@ -319,7 +302,7 @@ export function UserProvider({ user, children }: { user: User; children: ReactNo
 export const useUser = () => useContext(UserContext);
 ```
 
-Bridge it in your layout—the server fetches the real user, then passes it to the client:
+Bridge it in your layout. The server fetches the real user, then passes it to the client:
 
 ```tsx
 // app/layout.tsx
@@ -359,36 +342,22 @@ export default function Header() {
 }
 ```
 
-### Which Layers Do I Need?
+### Which Layers Do You Need?
 
 | Question | Answer |
 |---|---|
 | Can I skip the proxy and just check in `page.tsx`? | **Yes.** This is the most secure approach. The proxy just makes redirects faster. |
 | Can I rely only on the proxy? | **No.** The proxy can be bypassed and can't call your backend to verify tokens properly. |
 | Can I use `useUser()` context for access control? | **No.** Client state is modifiable. Use it only for UI personalization. |
-| Do I need all three? | **Proxy + server component checks** is the recommended combo. Client context is optional—add it when client components need user info for display. |
-
-| Python Pattern | Next.js Equivalent | Layer |
-|---|---|---|
-| `@app.before_request` (Flask) | `proxy.ts` | Proxy |
-| `@login_required` / `Depends(get_current_user)` | `getCurrentUser()` in `page.tsx` | Server Component |
-| `request.user` in templates | `useUser()` in client components | Client Context |
+| Do I need all three? | **Proxy + server component checks** is the recommended combo. Client context is optional; add it when client components need user info for display. |
 
 ---
 
-## 5. When You Must Use Client Components
+## When I Hit the "Client vs. Server" Wall
 
-The linear server-side pattern covers a lot of ground, but it breaks down when you need immediate browser-side feedback or access to user hardware. You must use the `"use client"` directive for:
+Things were going smoothly until I needed a Navbar with interactive state, like a sidebar that could open and close. I kept getting errors because I was trying to use `useState` inside a Server Component (`page.tsx`). The LLM suggested I extract the interactive part into a separate client component and import it into the page. That's when it clicked: **that's what all those component files were for** in my colleague's project.
 
-**Direct user interactivity**: `onClick`, `onChange`, `onMouseEnter`, real-time form validation, any UI that changes without a full page reload (`useState`, `useReducer`).
-
-**Browser-only APIs**: `window.localStorage`, `window.innerWidth`, `navigator.geolocation`, Camera API, Bluetooth, and animation libraries like Framer Motion or GSAP.
-
-**Component lifecycle and side effects**: `useEffect` / `useLayoutEffect` for timers, WebSocket connections, analytics logging, or third-party UI libraries that rely on browser-specific hooks.
-
-### Keeping the Linear Flow: The "Hole" Pattern
-
-Even with client components, you can maintain clarity through **Component Composition**. Fetch data in the Server Page, then pass the rendered server content as `children` into the Client Component:
+The LLM also suggested a discipline that fit my style: keep client components "pure", with no `fetch` or `useEffect` in them. Data still flows through the page, and the component just handles interactivity. This way, I can always trace where data comes from by looking at `page.tsx`.
 
 ```tsx
 // components/InteractiveSidebar.tsx
@@ -437,121 +406,13 @@ export default async function DashboardPage() {
 }
 ```
 
-> **Rule of Thumb**: If you find yourself putting `useEffect` or `fetch` inside a Client Component, stop and ask: "Can I move this data fetching up to the Page and just pass the result down?" Usually, the answer is yes.
+The data (`folders`) is fetched in the page. The component just receives it as children and handles the toggle. Clean separation.
 
 ---
 
-## 6. Server Actions: Mutations as Functions
+## Input Validation with Zod
 
-Server Actions let you handle data mutations (POST/PUT/DELETE) like function calls. They call your backend API, then refresh the page—no manual API endpoints or client-side `fetch()`.
-
-```tsx
-// app/folders/page.tsx
-import { fetchFromBackend, mutateBackend } from "@/lib/api";
-import { revalidatePath } from "next/cache";
-
-export default async function FolderPage() {
-  const folders = await fetchFromBackend("/folders");
-
-  async function createFolder(formData: FormData) {
-    "use server";
-    await mutateBackend("/folders", "POST", {
-      name: formData.get("folderName"),
-    });
-    revalidatePath("/folders");
-  }
-
-  async function deleteFolder(formData: FormData) {
-    "use server";
-    const id = formData.get("id");
-    await mutateBackend(`/folders/${id}`, "DELETE");
-    revalidatePath("/folders");
-  }
-
-  return (
-    <main className="p-10">
-      <h1 className="text-2xl font-bold">My Folders</h1>
-
-      <ul className="my-4">
-        {folders.map((f: any) => (
-          <li key={f.id} className="p-2 border-b flex justify-between items-center">
-            {f.name}
-            <form action={deleteFolder}>
-              <input type="hidden" name="id" value={f.id} />
-              <button type="submit" className="text-red-500 text-sm">Delete</button>
-            </form>
-          </li>
-        ))}
-      </ul>
-
-      <form action={createFolder} className="flex gap-2">
-        <input name="folderName" placeholder="New folder name..." className="border p-2 rounded" required />
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Add Folder</button>
-      </form>
-    </main>
-  );
-}
-```
-
-### Adding Loading States
-
-Use `useFormStatus` in a small client sub-component. The core Server Action stays in the main script:
-
-```tsx
-// components/SubmitButton.tsx
-"use client";
-import { useFormStatus } from "react-dom";
-
-export function SubmitButton({ label = "Submit", pending_label = "Saving..." }) {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50">
-      {pending ? pending_label : label}
-    </button>
-  );
-}
-```
-
----
-
-## 7. Zod Validation: Pydantic for TypeScript
-
-If you love Pydantic in Python, you'll love **Zod** in TypeScript. Define a schema, validate incoming data, get type-safe results or clear error messages.
-
-### Side-by-Side Comparison
-
-```python
-# Python (Pydantic)
-from pydantic import BaseModel, field_validator
-
-class CreatePostInput(BaseModel):
-    title: str
-    content: str
-    tags: list[str] = []
-
-    @field_validator('title')
-    def title_not_empty(cls, v):
-        if len(v.strip()) < 3:
-            raise ValueError('Title must be at least 3 characters')
-        return v.strip()
-```
-
-```tsx
-// TypeScript (Zod)
-import { z } from "zod";
-
-const CreatePostSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters").transform((v) => v.trim()),
-  content: z.string().min(1, "Content is required"),
-  tags: z.array(z.string()).default([]),
-});
-
-type CreatePostInput = z.infer<typeof CreatePostSchema>;
-```
-
-### Validating Server Actions
-
-Validate form data inside your Server Action before calling your backend:
+Once I had the core patterns down, I needed form validation. In Python, I'd reach for Pydantic. The Next.js equivalent is Zod. Same idea, different syntax. I validated form data inside Server Actions before calling the backend:
 
 ```tsx
 // app/posts/new/page.tsx
@@ -600,9 +461,13 @@ export default async function NewPostPage() {
         </div>
         <div>
           <label className="block text-sm font-medium">Tags (comma-separated)</label>
-          <input name="tags" placeholder="react, nextjs, tutorial" className="mt-1 w-full border p-2 rounded" />
+          <input name="tags" placeholder="react, nextjs, tutorial"
+                 className="mt-1 w-full border p-2 rounded" />
         </div>
-        <button type="submit" className="bg-blue-500 text-white px-6 py-2 rounded">Publish</button>
+        <button type="submit"
+                className="bg-blue-500 text-white px-6 py-2 rounded">
+          Publish
+        </button>
       </form>
     </main>
   );
@@ -611,7 +476,7 @@ export default async function NewPostPage() {
 
 ### Showing Validation Errors with `useActionState`
 
-To display field-level errors, use `useActionState` (React 19+) in a client component:
+To display field-level errors, I used `useActionState` (React 19+) in a client component. This is one of the cases where a client component is justified because it needs to react to form submission state:
 
 ```tsx
 // components/PostForm.tsx
@@ -635,19 +500,27 @@ export function PostForm({
       <div>
         <label className="block text-sm font-medium">Title</label>
         <input name="title" className="mt-1 w-full border p-2 rounded" />
-        {state.errors?.title && <p className="mt-1 text-sm text-red-600">{state.errors.title[0]}</p>}
+        {state.errors?.title && (
+          <p className="mt-1 text-sm text-red-600">{state.errors.title[0]}</p>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium">Content</label>
         <textarea name="content" rows={6} className="mt-1 w-full border p-2 rounded" />
-        {state.errors?.content && <p className="mt-1 text-sm text-red-600">{state.errors.content[0]}</p>}
+        {state.errors?.content && (
+          <p className="mt-1 text-sm text-red-600">{state.errors.content[0]}</p>
+        )}
       </div>
       <div>
         <label className="block text-sm font-medium">Tags</label>
-        <input name="tags" placeholder="react, nextjs" className="mt-1 w-full border p-2 rounded" />
-        {state.errors?.tags && <p className="mt-1 text-sm text-red-600">{state.errors.tags[0]}</p>}
+        <input name="tags" placeholder="react, nextjs"
+               className="mt-1 w-full border p-2 rounded" />
+        {state.errors?.tags && (
+          <p className="mt-1 text-sm text-red-600">{state.errors.tags[0]}</p>
+        )}
       </div>
-      <button type="submit" disabled={isPending} className="bg-blue-500 text-white px-6 py-2 rounded disabled:opacity-50">
+      <button type="submit" disabled={isPending}
+              className="bg-blue-500 text-white px-6 py-2 rounded disabled:opacity-50">
         {isPending ? "Publishing..." : "Publish"}
       </button>
       {state.message && <p className="text-red-600 font-medium">{state.message}</p>}
@@ -658,7 +531,7 @@ export function PostForm({
 
 ### Validating API Responses
 
-Zod also validates data coming *from* your backend—like Pydantic parsing an API response:
+Zod also validates data coming *from* the backend, like Pydantic parsing an API response:
 
 ```tsx
 // lib/schemas.ts
@@ -689,29 +562,11 @@ export async function fetchTyped<T>(
 }
 ```
 
-### Zod ↔ Pydantic Cheat Sheet
-
-| Pydantic | Zod |
-|---|---|
-| `str` | `z.string()` |
-| `int` | `z.number().int()` |
-| `float` | `z.number()` |
-| `bool` | `z.boolean()` |
-| `list[str]` | `z.array(z.string())` |
-| `Optional[str]` | `z.string().optional()` |
-| `Field(default="x")` | `z.string().default("x")` |
-| `Field(min_length=3)` | `z.string().min(3)` |
-| `@field_validator` | `.refine()` or `.transform()` |
-| `model_validate(data)` | `Schema.parse(data)` |
-| `model_validate` (safe) | `Schema.safeParse(data)` |
-| `ValidationError` | `ZodError` (via `.error.flatten()`) |
-| Type from model | `z.infer<typeof Schema>` |
-
 ---
 
-## 8. Error Handling
+## Error Handling
 
-Next.js gives you two parallel systems: **file-based error boundaries** for catching render-time failures, and **try/catch inside Server Components** for granular control.
+Next.js has file-based conventions for errors that reminded me of how Python frameworks handle exceptions, but with files instead of decorators.
 
 ### File-Based Error Boundaries (`error.tsx`)
 
@@ -732,7 +587,8 @@ export default function DashboardError({
     <div className="p-10 text-center">
       <h2 className="text-xl font-bold text-red-600">Something went wrong</h2>
       <p className="mt-2 text-gray-600">{error.message}</p>
-      <button onClick={() => reset()} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+      <button onClick={() => reset()}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
         Try Again
       </button>
     </div>
@@ -740,11 +596,11 @@ export default function DashboardError({
 }
 ```
 
-Error boundaries use React's `componentDidCatch` lifecycle under the hood, which only works on the client—hence the required `"use client"`. But notice it has no `useEffect` or `fetch`. It's just a UI shell.
+Error boundaries use React's `componentDidCatch` lifecycle under the hood, which only works on the client, hence the required `"use client"`. But notice it has no `useEffect` or `fetch`. It's just a UI shell.
 
 ### Inline Error Handling
 
-For finer control—like showing a fallback for one failed API call without crashing the whole page:
+For finer control, like showing a fallback for one failed API call without crashing the whole page:
 
 ```tsx
 // app/dashboard/page.tsx
@@ -841,13 +697,11 @@ async function createFolder(formData: FormData) {
 }
 ```
 
-> **Mapping to Python**: `error.tsx` = route-level `except Exception`. `notFound()` = `abort(404)`. Inline `try/catch` = `try/except` with a fallback value.
-
 ---
 
-## 9. Loading & Suspense
+## Loading States
 
-In Python, when you `await` a slow query, the server waits—the user sees nothing until the full response is ready. Next.js gives you **Suspense boundaries** that show parts of the page instantly while slower data loads in the background.
+Loading was the part that surprised me the most. In Python, you'd typically handle loading indicators on the client. Next.js makes it file-based.
 
 ### The Simplest Pattern: `loading.tsx`
 
@@ -873,7 +727,7 @@ No `useState`, no `isLoading` flag. The file's existence is the configuration.
 
 ### Granular Suspense: Load Parts Independently
 
-When different parts of your page have different load times, wrap the slow parts individually:
+When different parts of your page have different load times, wrap the slow parts individually. This is where the pattern gets powerful. The page still reads top-to-bottom, but each section loads independently:
 
 ```tsx
 // app/dashboard/page.tsx
@@ -944,146 +798,13 @@ export default function DashboardPage() {
 }
 ```
 
-In Python with `asyncio`, you'd use `asyncio.gather` to run fetches concurrently—but even `gather` waits for ALL to complete before returning. Suspense is better: it **streams** each result to the browser as soon as it's ready.
-
-> **Rule of Thumb**: If you have two `await` calls and one is significantly slower, split them into separate async components wrapped in `<Suspense>`. Your users see content faster.
-
 ---
 
-## 10. Real-Time Data: SSE & WebSockets
+## WebSockets: The One Place Client State Is Unavoidable
 
-Your backend likely already handles WebSockets or streaming. Next.js gives you two ways to connect: **Server-Sent Events (SSE)** for one-way server-to-client updates, and **WebSockets** for bidirectional communication.
+Real-time features like chat genuinely need client-side state. There's no server-side alternative for maintaining a WebSocket connection. But even here, I kept the pattern: the page handles auth and data fetching, then hands everything off to a client component.
 
-| | SSE | WebSockets |
-|---|---|---|
-| Direction | Server → Client (one-way) | Bidirectional |
-| Protocol | HTTP (works everywhere) | WS (needs separate server) |
-| Python Equivalent | `StreamingResponse` (FastAPI) | `websockets` / `socket.io` |
-| Best For | Live feeds, notifications, progress bars | Chat, collaboration, gaming |
-| Reconnection | Built-in (browser auto-reconnects) | Manual |
-
-> **Rule of Thumb**: If the client only needs to *receive* updates, use SSE. Use WebSockets only when the client needs to *send* messages back in real-time.
-
-### Server-Sent Events
-
-#### The Route Handler (streams from your backend)
-
-```tsx
-// app/api/notifications/stream/route.ts
-export const dynamic = "force-dynamic";
-
-export async function GET(request: Request) {
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (data: any) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
-
-      send({ type: "connected", timestamp: Date.now() });
-
-      const interval = setInterval(async () => {
-        try {
-          const res = await fetch(`${process.env.API_BASE_URL}/notifications/latest`, {
-            headers: { Authorization: `Bearer ${process.env.INTERNAL_TOKEN}` },
-          });
-          const notifications = await res.json();
-          send({ type: "notifications", data: notifications });
-        } catch {
-          send({ type: "error", message: "Failed to fetch" });
-        }
-      }, 3000);
-
-      request.signal.addEventListener("abort", () => {
-        clearInterval(interval);
-        controller.close();
-      });
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
-}
-```
-
-#### The Client Listener
-
-This is one of the cases where `useEffect` is genuinely necessary—you're connecting to a persistent browser API:
-
-```tsx
-// components/NotificationFeed.tsx
-"use client";
-import { useEffect, useState } from "react";
-
-type Notification = { id: string; message: string; createdAt: string };
-
-export default function NotificationFeed() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
-    const eventSource = new EventSource("/api/notifications/stream");
-
-    eventSource.onopen = () => setIsConnected(true);
-    eventSource.onmessage = (event) => {
-      const payload = JSON.parse(event.data);
-      if (payload.type === "notifications") setNotifications(payload.data);
-    };
-    eventSource.onerror = () => setIsConnected(false);
-
-    return () => eventSource.close();
-  }, []);
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
-        <span className="text-sm text-gray-500">{isConnected ? "Live" : "Reconnecting..."}</span>
-      </div>
-      <ul>
-        {notifications.map((n) => (
-          <li key={n.id} className="py-2 border-b">
-            <p>{n.message}</p>
-            <p className="text-xs text-gray-400">{n.createdAt}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-#### Named Events
-
-For structured streams with different event types:
-
-```tsx
-// Route handler sends named events
-const send = (event: string, data: any) => {
-  controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
-};
-send("stats", { activeUsers: 142, cpu: 67.3 });
-send("alerts", { level: "warn", message: "High memory usage" });
-```
-
-```tsx
-// Client listens to specific events
-const es = new EventSource("/api/dashboard/stream");
-es.addEventListener("stats", (e) => setStats(JSON.parse(e.data)));
-es.addEventListener("alerts", (e) => setAlerts((prev) => [JSON.parse(e.data), ...prev]));
-```
-
-### WebSockets
-
-Next.js doesn't natively handle WebSocket upgrades, so you run a standalone server alongside it—or more likely, your backend already serves WebSocket endpoints.
-
-#### Client Hook (connects to your backend's WS endpoint)
+### Client Hook
 
 ```tsx
 // hooks/useWebSocket.ts
@@ -1120,7 +841,7 @@ export function useWebSocket(url: string) {
 }
 ```
 
-#### The Page (Linear Flow Preserved)
+### The Page (Linear Flow Preserved)
 
 ```tsx
 // app/chat/[room]/page.tsx
@@ -1149,66 +870,25 @@ export default async function ChatPage({ params }: { params: { room: string } })
 }
 ```
 
-The page reads top-to-bottom: fetch user, fetch room, render. The `ChatRoom` client component is just a shell for the WebSocket connection—the server never touches WebSocket code.
-
-### When to Use Which
-
-| Scenario | SSE | WebSocket |
-|---|---|---|
-| Live notifications | Yes | Overkill |
-| Dashboard metrics / stock tickers | Yes | Overkill |
-| Progress bars (file upload, AI generation) | Yes | Overkill |
-| Chat / messaging | No | Yes |
-| Collaborative editing | No | Yes |
-| Multiplayer games | No | Yes |
-
-### Python ↔ Next.js Real-Time Cheat Sheet
-
-| Python | Next.js |
-|---|---|
-| `StreamingResponse` (FastAPI) | Route Handler with `ReadableStream` |
-| `yield f"data: ...\n\n"` | `controller.enqueue(encoder.encode(...))` |
-| `websockets.serve(handler, ...)` | Your backend's WS endpoint / standalone `ws` server |
-| `async for message in websocket` | `ws.onmessage = (event) => ...` |
-| `await websocket.send(data)` | `ws.send(JSON.stringify(data))` |
-
 ---
 
-## 11. Global State
+## A Summary of the Mental Model
 
-Split your thinking into **Server State** and **Client State**.
-
-**Server state** (data from your backend) is handled by the Data Access Layer (`lib/dal.ts`) with React `cache`. Call `getCurrentUser()` or `fetchFromBackend()` in any server component—memoized per request, the API is hit once.
+**Server state** (data from your backend) is handled by the Data Access Layer (`lib/dal.ts`) with React `cache`. Call `getCurrentUser()` or `fetchFromBackend()` in any server component. It's memoized per request, so the API is hit once.
 
 **Client state** (UI-only state like the current tab, sidebar open/closed, search filters) has two options:
 
-- **URL Query Params**: For state that should survive page refreshes and be shareable. Server Components can read `searchParams` directly—no client hooks needed.
+- **URL Query Params**: For state that should survive page refreshes and be shareable. Server Components can read `searchParams` directly, no client hooks needed.
 - **React Context**: For ephemeral UI state that client components need to share (like user info for display, as shown in the auth section).
 
 > **Tip**: Before reaching for `useState` or Context, ask: "Should this state be in the URL?" If the user would expect to bookmark or share it (filters, pagination, tabs), put it in `searchParams`.
 
 ---
 
-## Summary
+## What I'd Do Differently Next Time
 
-The "Linear Script" pattern for Next.js with a separate backend:
+Looking back, a few things stand out. I'd start by reading the Next.js docs on Server Components *before* trying to understand someone else's project. I wasted time being confused by problems the docs explain in the first few pages. I'd also set up the Data Access Layer (`dal.ts`) from day one instead of inlining `fetchFromBackend` calls first and refactoring later.
 
-| Concern | Where It Lives | File |
-|---|---|---|
-| API connection | Centralized client | `lib/api.ts` |
-| Auth verification | Memoized data access | `lib/dal.ts` |
-| Fast auth redirects | Proxy | `proxy.ts` |
-| Data reading | Server Component | `app/**/page.tsx` |
-| Data writing | Server Action | `"use server"` functions |
-| Input validation | Zod schema | Co-located with the action |
-| Response validation | Zod schema | `lib/schemas.ts` |
-| Error recovery | Error boundary + try/catch | `error.tsx` + inline |
-| Loading states | Suspense | `loading.tsx` + `<Suspense>` |
-| Real-time (one-way) | SSE Route Handler | `app/api/**/route.ts` |
-| Real-time (two-way) | WebSocket client hook | `hooks/useWebSocket.ts` |
-| UI personalization | Client Context (optional) | `components/UserProvider.tsx` |
-| Browser interactivity | Client Component shells | `"use client"` components |
+The biggest thing I still find unintuitive is caching and revalidation. Next.js has opinions about when to re-fetch data, and those opinions don't always match what I'd expect coming from Python, where every request is a fresh function call. That's probably the next thing I need to sit down and properly learn.
 
-The principle throughout: your `page.tsx` is the entry point. It reads top to bottom. Data comes from `fetchFromBackend()`. Mutations go through Server Actions that call `mutateBackend()`. Client components are thin shells for interactivity. Everything is one Ctrl+Click away from its source.
-
-If you find yourself reaching for `useEffect` to fetch data, stop and ask: "Can I move this to the server?" Usually, you can—and your Python-trained brain will thank you.
+But the core approach - treat `page.tsx` as your `main.py`, keep data flow visible, and push interactivity to the edges - got me productive in Next.js faster than any tutorial did. If you're coming from Python and feeling lost, start there.
