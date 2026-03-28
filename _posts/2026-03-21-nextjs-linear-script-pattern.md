@@ -476,7 +476,7 @@ export default async function NewPostPage() {
 
 ### Showing Validation Errors with `useActionState`
 
-To display field-level errors, I used `useActionState` (React 19+) in a client component. This is one of the cases where a client component is justified because it needs to react to form submission state:
+To display field-level errors, I used `useActionState` in a client component. This is one of the cases where a client component is justified because it needs to react to form submission state:
 
 ```tsx
 // components/PostForm.tsx
@@ -701,8 +701,6 @@ async function createFolder(formData: FormData) {
 
 ## Loading States
 
-Loading was the part that surprised me the most. In Python, you'd typically handle loading indicators on the client. Next.js makes it file-based.
-
 ### The Simplest Pattern: `loading.tsx`
 
 Drop a `loading.tsx` next to your `page.tsx`. Next.js automatically wraps the page in a Suspense boundary:
@@ -882,13 +880,3 @@ export default async function ChatPage({ params }: { params: { room: string } })
 - **React Context**: For ephemeral UI state that client components need to share (like user info for display, as shown in the auth section).
 
 > **Tip**: Before reaching for `useState` or Context, ask: "Should this state be in the URL?" If the user would expect to bookmark or share it (filters, pagination, tabs), put it in `searchParams`.
-
----
-
-## What I'd Do Differently Next Time
-
-Looking back, a few things stand out. I'd start by reading the Next.js docs on Server Components *before* trying to understand someone else's project. I wasted time being confused by problems the docs explain in the first few pages. I'd also set up the Data Access Layer (`dal.ts`) from day one instead of inlining `fetchFromBackend` calls first and refactoring later.
-
-The biggest thing I still find unintuitive is caching and revalidation. Next.js has opinions about when to re-fetch data, and those opinions don't always match what I'd expect coming from Python, where every request is a fresh function call. That's probably the next thing I need to sit down and properly learn.
-
-But the core approach - treat `page.tsx` as your `main.py`, keep data flow visible, and push interactivity to the edges - got me productive in Next.js faster than any tutorial did. If you're coming from Python and feeling lost, start there.
