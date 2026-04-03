@@ -29,6 +29,14 @@
             title="{{ site.title | escape }}"
             href="{{ '/feed.xml' | relative_url }}"
         />
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-EFC9QRHGC9"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-EFC9QRHGC9');
+        </script>
     </head>
     <body>
         <header class="site-header">
